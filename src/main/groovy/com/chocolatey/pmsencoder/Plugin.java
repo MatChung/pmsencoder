@@ -7,21 +7,22 @@ import java.util.ArrayList;
 
 import javax.swing.JComponent;
 
-import com.chocolatey.pmsencoder.Matcher;
 import com.chocolatey.pmsencoder.Engine;
+import com.chocolatey.pmsencoder.Matcher;
+import com.chocolatey.pmsencoder.NaviX;
 import com.chocolatey.pmsencoder.WEB;
 
 import net.pms.configuration.PmsConfiguration;
 import net.pms.dlna.DLNAMediaInfo;
 import net.pms.dlna.DLNAResource;
 import net.pms.encoders.Player;
-import net.pms.external.StartStopListener;
+import net.pms.external.AdditionalFolderAtRoot;
 import net.pms.formats.Format;
 import net.pms.PMS;
 
 import org.apache.log4j.xml.DOMConfigurator;
 
-public class Plugin implements StartStopListener {
+public class Plugin implements AdditionalFolderAtRoot {
     private static final String VERSION = "1.0.1";
     private static final String PMSENCODER_CONFIG_FILE_PATH = "pmsencoder.config_file";
     private PmsConfiguration configuration;
@@ -29,6 +30,7 @@ public class Plugin implements StartStopListener {
     private Matcher matcher;
     private PMS pms;
     private String currentDirectory;
+    private NaviX navix;
    
     public Plugin() {
         PMS.minimal("initializing PMSEncoder " + VERSION);
@@ -47,6 +49,9 @@ public class Plugin implements StartStopListener {
         matcher = new Matcher();
         loadConfig();
         pmsencoder = new Engine(configuration, matcher);
+
+	// initialize NaviX object responsible for creating virtual folder
+	navix = new NaviX();
 
         /*
          * FIXME: don't assume the position is fixed
@@ -105,6 +110,11 @@ public class Plugin implements StartStopListener {
     }
 
     @Override
+    public DLNAResource getChild() {
+	return navix.getVirtualFolder();
+    }
+
+    @Override
     public String name() {
         return "PMSEncoder plugin for PS3 Media Server";
     }
@@ -112,16 +122,6 @@ public class Plugin implements StartStopListener {
     @Override
     public JComponent config() { // no config GUI (though Griffon would make this bearable)
         return null;
-    }
-
-    @Override
-    public void nowPlaying(DLNAMediaInfo media, DLNAResource resource) {
-
-    }
-
-    @Override
-    public void donePlaying(DLNAMediaInfo media, DLNAResource resource) {
-
     }
 
     @Override

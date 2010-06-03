@@ -84,7 +84,7 @@ public class Engine extends MEncoderWebVideo {
         mkfifo_process.runInNewThread();
 
         try {
-            Thread.sleep(50);
+            Thread.sleep(100);
         } catch (InterruptedException e) { }
 
         pipe.deleteLater();
