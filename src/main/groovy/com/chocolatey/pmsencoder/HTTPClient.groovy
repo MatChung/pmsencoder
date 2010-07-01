@@ -1,7 +1,7 @@
 package com.chocolatey.pmsencoder
 
 import groovyx.net.http.HTTPBuilder
-import groovyx.net.http.ParserRegistry
+import groovyx.net.http.ParserRegistry // FIXME: unused?
 import static groovyx.net.http.ContentType.TEXT
 import static groovyx.net.http.Method.GET
 import static groovyx.net.http.Method.HEAD

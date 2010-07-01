@@ -105,12 +105,6 @@ class Config extends Logger {
         profile.with(closure)
         profiles[name] = profile
     }
-
-    // DSL method
-    @Typed(TypePolicy.DYNAMIC) // Groovy++ doesn't support delegation
-    void defaultArgs (List<String> args) {
-        this.defaultArgs = args
-    }
 }
 
 class Profile extends Logger {
@@ -306,11 +300,11 @@ class Actions extends Logger {
                         args << name << value
                     } else {
                         log.info("adding $name")
-                        args << name // FIXME: encapsulate @args handling
+                        args << name // FIXME: encapsulate args handling
                     }
                 } else if (value) {
                     log.info("setting $name to $value")
-                    args[ index + 1 ] = value // FIXME: encapsulate @args handling
+                    args[ index + 1 ] = value // FIXME: encapsulate args handling
                 }
             }
         }

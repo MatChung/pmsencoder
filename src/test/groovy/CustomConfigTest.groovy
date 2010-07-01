@@ -8,21 +8,21 @@ class CustomConfigTest extends PMSEncoderTestCase {
 
         def uri = 'http://www.example.com'
         def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri)
+        def wantStash = new Stash(uri: uri)
 
         assertMatch(
             uri,          // URI
             stash,        // stash
             [],           // args
             [],           // expected matches
-            want_stash,   // expected stash
+            wantStash,    // expected stash
             [             // expected args
                 '-foo',
                 '-bar',
                 '-baz',
                 '-quux'
             ],
-            true          // use default args
+            true          // use the default mencoder args defined in the config file
         )
     }
 
@@ -32,14 +32,14 @@ class CustomConfigTest extends PMSEncoderTestCase {
 
         def uri = 'http://feedproxy.google.com/~r/TEDTalks_video'
         def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri + '/foo/bar.baz')
+        def wantStash = new Stash(uri: uri + '/foo/bar.baz')
 
         assertMatch(
             uri,          // URI
             stash,        // stash
             [],           // args
             [ 'TED' ],    // expected matches
-            want_stash,   // expected stash
+            wantStash,    // expected stash
             [             // expected args
                 '-foo',
                 'bar',
@@ -53,14 +53,14 @@ class CustomConfigTest extends PMSEncoderTestCase {
 
         def uri = 'http://www.example.com'
         def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri)
+        def wantStash = new Stash(uri: uri)
 
         assertMatch(
             uri,           // URI
             stash,         // stash
             [],            // args
             [ 'Example' ], // expected matches
-            want_stash,    // expected stash
+            wantStash,     // expected stash
             [              // expected args
                 '-an',
                 'example'
