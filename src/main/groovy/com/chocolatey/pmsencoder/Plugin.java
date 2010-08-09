@@ -23,7 +23,7 @@ import net.pms.PMS;
 import org.apache.log4j.xml.DOMConfigurator;
 
 public class Plugin implements AdditionalFolderAtRoot {
-    private static final String VERSION = "1.0.1";
+    private static final String VERSION = "1.1.0";
     private static final String PMSENCODER_CONFIG_FILE_PATH = "pmsencoder.config_file";
     private PmsConfiguration configuration;
     private Engine pmsencoder;
@@ -50,8 +50,8 @@ public class Plugin implements AdditionalFolderAtRoot {
         loadConfig();
         pmsencoder = new Engine(configuration, matcher);
 
-	// initialize NaviX object responsible for creating virtual folder
-	navix = new NaviX();
+        // initialize NaviX object responsible for creating virtual folder
+        navix = new NaviX();
 
         /*
          * FIXME: don't assume the position is fixed
@@ -77,15 +77,23 @@ public class Plugin implements AdditionalFolderAtRoot {
     private boolean loadConfig(Object config) {
         boolean loaded = true;
 
+        PMS.minimal("trying to load PMSEncoder config file: " + config);
+
         try {
-            PMS.minimal("loading PMSEncoder config file: " + config);
             if (config instanceof URL) {
                 matcher.load((URL)config);
             } else {
-                matcher.load((String)config);
+                File configFile = new File((String)config);
+
+                if (configFile.exists()) {
+                    matcher.load(configFile);
+                } else {
+                    loaded = false;
+                    PMS.minimal("custom config file doesn't exist: " + config);
+                }
             }
         } catch (Throwable e) {
-            PMS.minimal("Can't load PMSEncoder config file: " + config + ": " + e);
+            PMS.error("can't load PMSEncoder config file: " + config, e);
             loaded = false;
         }
 
@@ -101,7 +109,7 @@ public class Plugin implements AdditionalFolderAtRoot {
             PMS.minimal("custom PMSEncoder config path defined: " + customConfigPath);
             loadConfig(customConfigPath);
         } else {
-            PMS.minimal("checking for a custom PMSEncoder file in " + currentDirectory);
+            PMS.minimal("checking for a custom PMSEncoder config file in " + currentDirectory);
 
             if (!loadConfig("pmsencoder.groovy")) {
                loadConfig("pmsencoder.conf");
@@ -111,7 +119,7 @@ public class Plugin implements AdditionalFolderAtRoot {
 
     @Override
     public DLNAResource getChild() {
-	return navix.getVirtualFolder();
+        return navix.getRoot();
     }
 
     @Override

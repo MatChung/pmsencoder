@@ -1,6 +1,6 @@
 config {
     // the default MEncoder args - these can be redefined in a custom config file
-    args = [
+    MENCODER_ARGS = [
         '-prefer-ipv4',
         '-oac', 'lavc',
         '-of', 'lavf',
@@ -12,27 +12,52 @@ config {
         '-vf', 'harddup'
     ]
 
+    /*
+        this is the default list of YouTube format/resolution IDs we should accept/select - in descending
+        order of preference.
+
+        it can be modified globally (in a custom config file) to add/remove a format, or can be overridden on
+        a per-video basis by supplying a new list to the youtube method (see below) e.g.
+        
+        exclude '1080p':
+
+            youtube YOUTUBE_ACCEPT - [ 37 ]
+
+        add '2304p':
+
+            youtube [ 38 ] + YOUTUBE_ACCEPT
+
+        For the full list of formats, see: https://secure.wikimedia.org/wikipedia/en/wiki/YouTube#Quality_and_codecs
+    */
+
+    YOUTUBE_ACCEPT = [
+        '37',  // 1080p
+        '22',  // 720p
+        '35',  // 480p
+        '34',  // 360p
+        '18',  // Medium
+        '5'    // 240p
+    ]
+
     profile ('YouTube') {
         // extract the resource's video_id from the URI of the standard YouTube page
-        match {
-            matches uri: '^http://(?:\\w+\\.)?youtube\\.com/watch\\?v=(?<video_id>[^&]+)'
+        pattern {
+            match uri: '^http://(?:\\w+\\.)?youtube\\.com/watch\\?v=(?<video_id>[^&]+)'
         }
 
         action {
-              // extract the resource's sekrit identifier ($t) from the HTML
-              get '&t=(?<t>[^&]+)'
+            // extract the resource's sekrit identifier ($t) from the HTML
+            scrape '&t=(?<t>[^&]+)'
 
-              /*
-                  now, with $video_id and $t defined, call the custom YouTube
-                  handler with a list of formats in descending order of preference
-              */
-              youtube '22', '18', '6', '5'
+            // Now, with $video_id and $t defined, call the custom YouTube handler.
+            // Note: the parentheses are required for a no-arg action
+            youtube()
         }
     }
                   
     profile ('Apple Trailers') {
-        match {
-            matches uri: '^http://(?:(?:movies|www|trailers)\\.)?apple\\.com/.+$'
+        pattern {
+            match uri: '^http://(?:(?:movies|www|trailers)\\.)?apple\\.com/.+$'
         }
 
         // FIXME: 4096 is a needlessly high video bitrate; they typically weigh in at ~1200 Kbps
@@ -42,8 +67,8 @@ config {
     }
 
     profile ('Apple Trailers HD') {
-        match {
-            matches uri: '^http://(?:(?:movies|www|trailers)\\.)?apple\\.com/.+\\.m4v$'
+        pattern {
+            match uri: '^http://(?:(?:movies|www|trailers)\\.)?apple\\.com/.+\\.m4v$'
         }
         
         action {
@@ -52,8 +77,8 @@ config {
     }
 
     profile ('TED') {
-        match {
-            matches uri: '^http://feedproxy\\.google\\.com/~r/TEDTalks_video\\b'
+        pattern {
+            match uri: '^http://feedproxy\\.google\\.com/~r/TEDTalks_video\\b'
         }
         
         action {
@@ -73,8 +98,8 @@ config {
          */
 
         // 1) extract the page ID
-        match {
-            matches uri: '^http://(www\\.)?gametrailers\\.com/download/(?<page_id>\\d+)/[^.]+\\.flv$'
+        pattern {
+            match uri: '^http://(www\\.)?gametrailers\\.com/download/(?<page_id>\\d+)/[^.]+\\.flv$'
         }
         
         // 2) and use it to restore the correct webpage URI
@@ -84,17 +109,17 @@ config {
     }
 
     profile ('GameTrailers') {
-        match {
-            matches uri: '^http://(www\\.)?gametrailers\\.com/'
+        pattern {
+            match uri: '^http://(www\\.)?gametrailers\\.com/'
         }
         
         action {
             /*
-                The order is important here! Make sure we get the variables before we set the URI.
+                The order is important here! Make sure we scrape the variables before we set the URI.
                 extract some values from the HTML
             */
-            get '\\bmov_game_id\\s*=\\s*(?<movie_id>\\d+)'
-            get '\\bhttp://www\\.gametrailers\\.com/download/\\d+/(?<filename>t_[^.]+)\\.wmv\\b'
+            scrape '\\bmov_game_id\\s*=\\s*(?<movie_id>\\d+)'
+            scrape '\\bhttp://www\\.gametrailers\\.com/download/\\d+/(?<filename>t_[^.]+)\\.wmv\\b'
 
             // now use them to rewrite the URI
             let uri: 'http://trailers-ak.gametrailers.com/gt_vault/$movie_id/$filename.flv'

@@ -23,10 +23,9 @@ class RegexHelper {
             int groupCount = matcher.groupCount()
 
             /*
-                we have to kick this old-school because Groovy ranges
+                we have to kick this for-loop old-school because groovy ranges
                 are bidirectional (i.e. (1 .. 0) works)
             */
-
             for (int i = 1; i <= groupCount; ++i) {
                 String name = matcher.getGroupName(i)
                 if (name) {

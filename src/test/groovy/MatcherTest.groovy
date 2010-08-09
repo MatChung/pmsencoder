@@ -76,9 +76,8 @@ class MatcherTest extends PMSEncoderTestCase {
     }
 
     /*
-        we can't use assertMatch here as the mysterious t parameter changes (possibly
-        for every request), which means our "fixture" isn't fixed.
-        instead we test it manually
+        we can't use assertMatch here due to the volatility of the token (and possibly)
+        the highest available resolution.
     */
     void testYouTube() {
         def youtube = 'http://www.youtube.com'
@@ -90,11 +89,15 @@ class MatcherTest extends PMSEncoderTestCase {
 
         assert matches == [ 'YouTube' ]
         assert stash.keySet().toList() == [ 'uri', 'video_id', 't' ]
-        assert stash['t']
-        assert stash['video_id'] == '_OBlgSz8sSM'
-        // XXX assert doesn't like GStrings
-        def want_uri = "$youtube/get_video?fmt=18&video_id=${stash['video_id']}&t=${stash['t']}"
-        assert stash['uri'] == want_uri.toString()
+        def video_id = stash['video_id']
+        assert video_id == '_OBlgSz8sSM'
+        def t = stash['t']
+        // the mysterious $t token changes frequently, but always seems to end in a URL-encoded "="
+        assert t ==~ /.*%3D$/
+        def want_uri = "$youtube/get_video?fmt=35&video_id=$video_id&t=$t&asv="
+        // println("wanted URI: $want_uri")
+        // println("got URI: ${stash['uri']}")
+        assert stash['uri'] == want_uri
         assert args == []
     }
 

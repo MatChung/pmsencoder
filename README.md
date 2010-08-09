@@ -6,13 +6,14 @@ This is a plugin for [PS3 Media Server](http://code.google.com/p/ps3mediaserver/
 
 Due to a [bug](http://code.google.com/p/ps3mediaserver/issues/detail?id=766) in the Mac OS X build of PMS, PMSEncoder doesn't currently work on Macs. In addition, PMS doesn't support web streams for Xbox renderers. PMSEncoder should work on all other platforms supported by PS3 Media Server.
 
-These instructions assume you have the latest versions of [PS3 Media Server](http://ps3mediaserver.org/forum/viewtopic.php?f=2&t=3217) and [Java](http://www.java.com/en/download/index.jsp), and a recent MEncoder.
+These instructions assume you have the [latest version](http://ps3mediaserver.org/forum/viewtopic.php?f=2&t=3217) of PS3 Media Server, the [latest version](http://www.java.com/en/download/index.jsp) of Java, and a recent MEncoder.
 
 # Installation <a name="Installation"></a>
 
-* download the [PMSEncoder jar file](http://github.com/downloads/chocolateboy/pmsencoder/pmsencoder-1.0.1.jar) and place it in the PMS `plugins` directory
+* download the [PMSEncoder jar file](http://github.com/downloads/chocolateboy/pmsencoder/pmsencoder-1.1.0.jar) and place it in the PMS `plugins` directory
 * shut down PMS and add `pmsencoder` to the front of the list of engines in PMS.conf e.g.
   * `engines = pmsencoder,mencoder,tsmuxer,mplayeraudio` &c.
+  * if the line doesn't exist, follow the instructions [here](http://ps3mediaserver.org/forum/viewtopic.php?f=6&t=7435&p=34674#p34674).
 * if you previously used the standalone version of PMSEncoder, disable it by removing the `mencoder_path = /path/to/pmsencoder` line.
 * restart PMS
 
@@ -50,7 +51,7 @@ For more details, discussion and troubleshooting tips, see the [wiki](http://wik
 
 # Version <a name="Version"></a>
 
-1.0.1
+1.1.0
 
 # License <a name="License"></a>
 
