@@ -1,9 +1,10 @@
-/* add mencoder.feature.level (bool) to stash based on MEncoder version */
+/* Add mencoder.feature.level (bool) to stash based on MEncoder version */
 
 /* More patterns? */
 
     greaterThan java.version: 1.5.0
     gt pms.revision: 400
+    eq uri: 'http://www.example.com'
 
 /* Different pattern syntax? */
 
@@ -21,7 +22,8 @@
         xpath: '//foo/bar/@baz',
         regex: 'foo:(?<bar>bar):baz'
         format: 'html' // default if xpath is defined
+	cookies: COOKIES_FILE
 
 /* restore missing actions e.g. add and remove */
 
-/* Add tests for ytaccept */
+/* Add tests for YOUTUBE_ACCEPT */

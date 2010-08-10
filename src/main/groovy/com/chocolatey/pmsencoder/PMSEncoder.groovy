@@ -184,17 +184,29 @@ class Pattern {
 
     // DSL method
     void match(Map<String, String> map) {
-        map.each { name, value -> match(name, value) }
-    }
-
-    // DSL method
-    void match(String name, String value) {
-        subpatterns << { stash, args ->
-            assert stash != null
-            RegexHelper.match(stash[name], value, stash)
+        map.each { name, value -> 
+            subpatterns << { stash, args ->
+                assert stash != null
+                RegexHelper.match(stash[name], value, stash)
+            }
         }
     }
 
+    // DSL method
+    void eq(Map<String, String> map) {
+        map.each { name, value -> 
+            subpatterns << { stash, args ->
+                assert stash != null
+		println "stash[name]: class: ${stash[name].class}, value: ${stash[name]}
+		println "value: class: ${value.class}, value: ${value}"
+		// Fucking GStrings - how do they work?
+                stash[name].equals(value)
+            }
+        }
+    }
+
+    // execute all the match/eq closures in this pattern block:
+    // return true if they all return true (i.e. all match) or false otherwise
     boolean match(Stash stash, List<String> args) {
         subpatterns.every { pattern -> pattern(stash, args) }
     }
