@@ -6,6 +6,6 @@ import net.pms.dlna.DLNAResource
 
 class NaviX extends Logger {
     VirtualFolder getRoot() {
-	return new VirtualFolder("NaviX", "http://navix.turner3d.net/images/logo_navi-x.png")
+        return new VirtualFolder("NaviX", "http://navix.turner3d.net/images/logo_navi-x.png")
     }
 }
