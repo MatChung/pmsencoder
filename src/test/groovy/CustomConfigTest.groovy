@@ -3,131 +3,163 @@ package com.chocolatey.pmsencoder
 
 class CustomConfigTest extends PMSEncoderTestCase {
     void testOverrideDefaultArgs() {
-        URL customConfig = this.getClass().getResource('/args.groovy')
+        def customConfig = this.getClass().getResource('/default_mencoder_args.groovy')
+        def uri = 'http://www.example.com'
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command([ '$URI': uri ], [ '-foo', '-bar', '-baz', '-quux' ])
+
         matcher.load(customConfig)
 
-        def uri = 'http://www.example.com'
-        def stash = new Stash(uri: uri)
-        def wantStash = new Stash(uri: uri)
-
         assertMatch(
-            uri,          // URI
-            stash,        // stash
-            [],           // args
+            command,      // supplied command
+            wantCommand,  // expected command
             [],           // expected matches
-            wantStash,    // expected stash
-            [             // expected args
-                '-foo',
-                '-bar',
-                '-baz',
-                '-quux'
-            ],
-            true          // use the default mencoder args defined in the config file
+            true          // use default MEncoder args
         )
     }
 
-    void testReplace() {
-        URL customConfig = this.getClass().getResource('/replace.groovy')
-        matcher.load(customConfig)
+    // confirm that the default TED profile works
+    void testProfile() {
+        /// XXX clone doesn't work
+        def TEDArgs = new ArrayList<String>(matcher.config.$DEFAULT_MENCODER_ARGS)
+        def index = TEDArgs.findIndexOf { it == '25' }
+
+        assert index > -1 // power assert!
+        TEDArgs[index] = '24'
 
         def uri = 'http://feedproxy.google.com/~r/TEDTalks_video'
-        def stash = new Stash(uri: uri)
-        def wantStash = new Stash(uri: uri + '/foo/bar.baz')
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command([ '$URI': uri ], TEDArgs)
 
         assertMatch(
-            uri,          // URI
-            stash,        // stash
-            [],           // args
+            command,      // supplied command
+            wantCommand,  // expected command
             [ 'TED' ],    // expected matches
-            wantStash,    // expected stash
-            [             // expected args
-                '-foo',
-                'bar',
-            ]
+            true          // use default args
         )
     }
 
-    void testAppend() {
-        URL customConfig = this.getClass().getResource('/append.groovy')
+    // now confirm that it can be overridden
+    void testProfileReplace() {
+        def customConfig = this.getClass().getResource('/profile_replace.groovy')
+        def uri = 'http://feedproxy.google.com/~r/TEDTalks_video'
+        def command = new Command([ '$URI': uri ])
+        def TEDArgs = new ArrayList<String>(matcher.config.$DEFAULT_MENCODER_ARGS)
+        def wantArgs = (TEDArgs + [ '-foo', 'bar' ]) as List<String> // FIXME: type-inference fail (or use Scala)
+        def wantCommand = new Command([ '$URI': uri + '/foo/bar.baz' ], wantArgs)
+
         matcher.load(customConfig)
 
+        assertMatch(
+            command,      // supplied command
+            wantCommand,  // expected command
+            [ 'TED' ],    // expected matches
+            true          // use default args
+        )
+    }
+
+    void testProfileAppend() {
+        def customConfig = this.getClass().getResource('/profile_append.groovy')
         def uri = 'http://www.example.com'
-        def stash = new Stash(uri: uri)
-        def wantStash = new Stash(uri: uri)
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command([ '$URI': uri ], [ '-an', 'example' ])
+
+        matcher.load(customConfig)
 
         assertMatch(
-            uri,           // URI
-            stash,         // stash
-            [],            // args
+            command,       // supplied command
+            wantCommand,   // expected command
             [ 'Example' ], // expected matches
-            wantStash,     // expected stash
-            [              // expected args
-                '-an',
-                'example'
-            ]
         )
     }
 
-    // basic test of the eq operator
-    void testEqPattern() {
-        URL customConfig = this.getClass().getResource('/pattern_eq_1.groovy')
-        matcher.load(customConfig)
-
+    void testGStrings() {
+        def customConfig = this.getClass().getResource('/gstrings.groovy')
         def uri = 'http://www.example.com'
-        def stash = new Stash(uri: uri)
-        def wantStash = new Stash(uri: uri)
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command(
+            [
+                action:  'Hello, world!',
+                domain:  'example',
+                key:     'key',
+                n:       '41',
+                pattern: 'Hello, world!',
+                $URI:    'http://www.example.com/example/key/value/42',
+                value:   'value'
+            ],
+            [ '-key', 'key', '-value', 'value' ]
+        )
+
+        matcher.load(customConfig)
 
         assertMatch(
-            uri,           // URI
-            stash,         // stash
-            [],            // args
-            [ 'Eq 1' ], // expected matches
-            wantStash,     // expected stash
-            [              // expected args
-                'result',
-                'OK',
-            ]
+            command,        // supplied command
+            wantCommand,    // expected command
+            [ 'GStrings' ], // expected matches
         )
     }
 
-    // ditto, but make sure we can use a GString on RHS
-    void testEqPatternWithGString() {
-        URL customConfig = this.getClass().getResource('/pattern_eq_2.groovy')
-        matcher.load(customConfig)
-
+    void testGString() {
+        def customConfig = this.getClass().getResource('/gstring_scope.groovy')
         def uri = 'http://www.example.com'
-        def stash = new Stash(uri: uri)
-        def wantStash = new Stash(uri: uri)
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command([ '$URI': uri ], [ 'config3', 'profile3', 'pattern3', 'action3' ])
+
+        matcher.load(customConfig)
 
         assertMatch(
-            uri,           // URI
-            stash,         // stash
-            [],            // args
-            [ 'Eq 2' ],    // expected matches
-            wantStash,     // expected stash
-            [              // expected args
-                'result',
-                'OK'
-            ]
+            command,             // supplied command
+            wantCommand,         // expected command
+            [ 'GString Scope' ], // expected matches
         )
     }
 
-    // test eq again: don't succeed if the strings aren't equal
-    void testEqPatternFailure() {
-        URL customConfig = this.getClass().getResource('/pattern_eq_3.groovy')
-        matcher.load(customConfig)
+    void testInterpolationInDefaultMEncoderArgs() {
+        def customConfig = this.getClass().getResource('/gstring_scope.groovy')
+        def uri = 'http://www.example.com'
+        def command = new Command([ '$URI': uri ])
+        def wantArgs = [
+            '-prefer-ipv4',
+            '-oac', 'lavc',
+            '-of', 'lavf',
+            '-lavfopts', 'format=dvd',
+            '-ovc', 'lavc',
+            // make sure nbcores is interpolated here as 3 in threads=3
+            '-lavcopts', "vcodec=mpeg2video:vbitrate=4096:threads=3:acodec=ac3:abitrate=128",
+            '-ofps', '25',
+            '-cache', '16384',
+            '-vf', 'harddup'
+        ]
 
-        def uri = 'http://www.example.com/extra_stuff'
-        def stash = new Stash(uri: uri)
-        def wantStash = new Stash(uri: uri)
+        def wantCommand = new Command([ '$URI': uri ], wantArgs)
 
         assertMatch(
-            uri,           // URI
-            stash,         // stash
-            [],            // args
+            command,       // supplied command
+            wantCommand,   // expected command
             [],            // expected matches
-            wantStash,     // expected stash
-            []             // expected args
+            true           // use default args
+        )
+    }
+
+    void testDefaultProfileOverride() {
+        def customConfig = this.getClass().getResource('/profile_default.groovy')
+        def uri = 'http://www.example.com'
+        def command = new Command([ '$URI': uri ])
+        def wantArgs = new ArrayList<String>(matcher.config.$DEFAULT_MENCODER_ARGS)
+        def index = wantArgs.findIndexOf { it == '-lavcopts' }
+
+        assert index > -1 // power assert!
+        // make sure nbcores is interpolated here as 3 in threads=3
+        wantArgs[ index + 1 ] = 'vcodec=mpeg2video:vbitrate=4096:threads=3:acodec=ac3:abitrate=384'
+
+        def wantCommand = new Command([ '$URI': uri ], wantArgs)
+        matcher.load(customConfig)
+
+        assertMatch(
+            command,       // supplied command
+            wantCommand,   // expected command
+            [ 'Default' ], // expected matches
+            true           // use default args
         )
     }
 }

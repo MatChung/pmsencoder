@@ -2,39 +2,55 @@
 package com.chocolatey.pmsencoder
 
 import groovy.util.GroovyTestCase
+import mockit.*
+import net.pms.configuration.PmsConfiguration
+import net.pms.PMS
 import org.apache.log4j.xml.DOMConfigurator
 
-// common test boilerplate
 abstract class PMSEncoderTestCase extends GroovyTestCase {
     protected Matcher matcher
+    protected PMS pms
 
     void setUp() {
-        URL log4jConfig = this.getClass().getResource('/log4j.xml')
+        def log4jConfig = this.getClass().getResource('/log4j_test.xml')
+        def pmsencoderConfig = this.getClass().getResource('/pmsencoder.groovy')
+
+        new MockUp<PmsConfiguration>() {
+            @Mock
+            public int getNumberOfCpuCores() { 3 }
+        };
+
+        new MockUp<PMS>() {
+            static final PmsConfiguration pmsConfig = new PmsConfiguration()
+
+            @Mock
+            public boolean init () { true }
+
+            @Mock
+            public static void minimal(String msg) {
+                println msg
+            }
+
+            @Mock
+            public static PmsConfiguration getConfiguration() { pmsConfig }
+        };
+
+        pms = PMS.get()
+
         DOMConfigurator.configure(log4jConfig)
-        URL pmsencoderConfig = this.getClass().getResource('/pmsencoder.groovy')
-        matcher = new Matcher()
+        matcher = new Matcher(pms)
         matcher.load(pmsencoderConfig)
     }
 
     protected void assertMatch(
-        String uri,
-        Stash stash,
-        List<String> args,
+        Command command,
+        Command expectedCommand,
         List<String> expectedMatches,
-        Stash expectedStash,
-        List<String> expectedArgs,
         boolean useDefaultArgs = false
     ) {
-        List<String> matches = matcher.match(stash, args, useDefaultArgs)
-
-        // println "got matches: $matches"
-        // println "want matches: $expectedMatches"
-        assert matches == expectedMatches
-        // println "got stash: $stash"
-        // println "want stash: $expectedStash"
-        assert stash == expectedStash
-        // println "got args: $args"
-        // println "want args: $expectedArgs"
-        assert args == expectedArgs
+        matcher.match(command, useDefaultArgs)
+        assertEquals(expectedCommand.stash, command.stash)
+        assertEquals(expectedCommand.args, command.args)
+        assertEquals(expectedMatches, command.matches)
     }
 }

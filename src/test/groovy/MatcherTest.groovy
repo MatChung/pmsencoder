@@ -5,16 +5,13 @@ class MatcherTest extends PMSEncoderTestCase {
     // no match - change nothing
     private void noMatch() {
         def uri = 'http://www.example.com'
-        def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri)
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command([ '$URI': uri ])
 
         assertMatch(
-            uri,          // URI
-            stash,        // stash
-            [],           // args
+            command,      // supplied command
+            wantCommand,  // expected command
             [],           // expected matches
-            want_stash,   // expected stash
-            []            // expected args
         )
     }
 
@@ -26,51 +23,51 @@ class MatcherTest extends PMSEncoderTestCase {
 
     void testApple() {
         def uri = 'http://www.apple.com/foobar.mov'
-        def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri)
-
-        assertMatch(
-            uri,                                 // URI
-            stash,                               // stash
-            [ '-lavcopts', 'vbitrate=4096' ],    // args
-            [ 'Apple Trailers' ],                // expected matches
-            want_stash,                          // expected stash
-            [                                    // expected args
+        def command = new Command([ '$URI': uri ], [ '-lavcopts', 'vbitrate=4096' ])
+        def wantCommand = new Command(
+            [ '$URI': uri ],
+            [
                 '-lavcopts', 'vbitrate=4096',
                 '-ofps', '24',
                 '-user-agent', 'QuickTime/7.6.2'
             ]
         )
+
+        assertMatch(
+            command,              // supplied command
+            wantCommand,          // expected command
+            [ 'Apple Trailers' ], // expected matches
+        )
     }
 
     void testAppleHD() {
         def uri = 'http://www.apple.com/foobar.m4v'
-        def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri)
+        def command = new Command([ '$URI': uri ], [ '-lavcopts', 'vbitrate=4096' ])
+        def wantCommand = new Command(
+            [ '$URI': uri ],
+            [
+                '-lavcopts', 'vbitrate=5086',
+                '-ofps', '24',
+                '-user-agent', 'QuickTime/7.6.2'
+            ]
+        )
 
         /*
             lavcopts look like this:
-            
+
                 -lavcopts vcodec=mpeg2video:vbitrate=4096:threads=2:acodec=ac3:abitrate=128
 
             but for the purposes of this test, this will suffice:
-            
+
                 -lavcopts vbitrate=4096
         */
 
         assertMatch(
-            uri,                                  // URI
-            stash,                                // stash
-            [ '-lavcopts', 'vbitrate=4096' ],     // args
-            [                                     // expected matches
+            command,
+            wantCommand,
+            [
                 'Apple Trailers',
                 'Apple Trailers HD'
-            ],
-            want_stash,                           // expected stash
-            [                                     // expected args
-                '-lavcopts', 'vbitrate=5086',
-                '-ofps', '24',
-                '-user-agent', 'QuickTime/7.6.2'
             ]
         )
     }
@@ -80,41 +77,64 @@ class MatcherTest extends PMSEncoderTestCase {
         the highest available resolution.
     */
     void testYouTube() {
+        youTubeCommon('35')
+    }
+
+    // verify that globally modifying $YOUTUBE_ACCEPT works
+    void testYOUTUBE_ACCEPT() {
+        def customConfig = this.getClass().getResource('/youtube_accept.groovy')
+        youTubeCommon('34', customConfig)
+    }
+
+    private void youTubeCommon(String fmt, URL customConfig = null) {
         def youtube = 'http://www.youtube.com'
         def uri = "$youtube/watch?v=_OBlgSz8sSM"
-        def stash = new Stash(uri: uri)
-        def args = []
+        def fixedURI = "$uri&has_verified=1".toString()
+        def command = new Command([ '$URI': uri ])
 
-        List<String> matches = matcher.match(stash, args, false)
+        if (customConfig != null) {
+            matcher.load(customConfig)
+        }
 
-        assert matches == [ 'YouTube' ]
-        assert stash.keySet().toList() == [ 'uri', 'video_id', 't' ]
-        def video_id = stash['video_id']
-        assert video_id == '_OBlgSz8sSM'
-        def t = stash['t']
+        // bypass Groovy's annoyingly loose definition of true
+        assertSame(true, matcher.match(command, false)) // false: don't use default MEncoder args
+
+        def stash = command.stash
+        def args = command.args
+        def matches = command.matches
+
+        assertEquals([ 'YouTube' ], matches)
+        assertEquals([
+            '$URI',
+            'youtube_author',
+            'youtube_fmt',
+            'youtube_t',
+            'youtube_uri',
+            'youtube_video_id'
+        ], stash.keySet().toList().sort())
+
+        def video_id = stash['youtube_video_id']
+        assertEquals('_OBlgSz8sSM', video_id)
+        def t = stash['youtube_t']
         // the mysterious $t token changes frequently, but always seems to end in a URL-encoded "="
         assert t ==~ /.*%3D$/
-        def want_uri = "$youtube/get_video?fmt=35&video_id=$video_id&t=$t&asv="
-        // println("wanted URI: $want_uri")
-        // println("got URI: ${stash['uri']}")
-        assert stash['uri'] == want_uri
-        assert args == []
+        assertEquals('HDCYT', stash['youtube_author'])
+        assertEquals(fmt, stash['youtube_fmt'])
+        assertEquals(fixedURI, stash['youtube_uri'])
+        def wantURI = "${youtube}/get_video?fmt=${fmt}&video_id=${video_id}&t=${t}&asv="
+        assertEquals(wantURI, stash['$URI'])
+        assertEquals([], args)
     }
 
     void testTED() {
         def uri = 'http://feedproxy.google.com/~r/TEDTalks_video/~3/EOXWNNyoC3E/843'
-        def stash = new Stash(uri: uri)
-        def want_stash = new Stash(uri: uri)
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command([ '$URI': uri ], [ '-ofps', '24' ])
 
         assertMatch(
-            uri,                                  // URI
-            stash,                                // stash
-            [],                                   // args
-            [ 'TED' ],                            // expected matches
-            want_stash,                           // expected stash
-            [                                     // expected args
-                '-ofps', '24'
-            ]
+            command,
+            wantCommand,
+            [ 'TED' ]
         )
     }
 
@@ -123,25 +143,24 @@ class MatcherTest extends PMSEncoderTestCase {
         def filename = 't_ufc09u_educate_int_gt'
         def uri = "http://www.gametrailers.com/download/$page_id/${filename}.flv"
         def movie_id = '5162'
-        def want_uri = "http://trailers-ak.gametrailers.com/gt_vault/$movie_id/${filename}.flv"
-        def stash = new Stash(uri: uri)
-        def want_stash = new Stash(
-            uri:      want_uri,
-            movie_id: movie_id,
-            page_id:  page_id,
-            filename: filename
+        def wantURI = "http://trailers-ak.gametrailers.com/gt_vault/$movie_id/${filename}.flv"
+        def command = new Command([ '$URI': uri ])
+        def wantCommand = new Command(
+            [
+                '$URI':                wantURI,
+                gametrailers_movie_id: movie_id,
+                gametrailers_page_id:  page_id,
+                gametrailers_filename: filename
+            ]
         )
 
         assertMatch(
-            uri,                                  // URI
-            stash,                                // stash
-            [],                                   // args
-            [                                     // expected matches
+            command,
+            wantCommand,
+            [
                 'GameTrailers (Revert PMS Workaround)',
                 'GameTrailers',
-            ],
-            want_stash,                           // expected stash
-            []                                    // expected args
+            ]
         )
     }
 }

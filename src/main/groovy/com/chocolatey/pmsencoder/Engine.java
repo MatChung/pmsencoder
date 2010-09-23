@@ -7,7 +7,7 @@ import java.util.List;
 import javax.swing.JComponent;
 
 import com.chocolatey.pmsencoder.Matcher;
-import com.chocolatey.pmsencoder.Stash;
+import com.chocolatey.pmsencoder.Command;
 
 import net.pms.configuration.PmsConfiguration;
 import net.pms.dlna.DLNAMediaInfo;
@@ -17,6 +17,7 @@ import net.pms.io.OutputParams;
 import net.pms.io.PipeProcess;
 import net.pms.io.ProcessWrapper;
 import net.pms.io.ProcessWrapperImpl;
+import net.pms.PMS;
 
 import org.apache.log4j.Logger;
 
@@ -40,52 +41,66 @@ public class Engine extends MEncoderWebVideo {
 
     @Override
     public ProcessWrapper launchTranscode(String uri, DLNAMediaInfo media, OutputParams params) throws IOException {
-        Stash stash = new Stash();
-        stash.put("uri", uri);
-        List<String> args = new ArrayList<String>();
-        List<String> matches;
+        PipeProcess pipe = new PipeProcess("pmsencoder" + System.currentTimeMillis());
+        String outfile = pipe.getInputPipe();
+        Command command = new Command();
+        Stash oldStash = command.getStash();
+
+        oldStash.put("$URI", uri);
+        oldStash.put("$EXECUTABLE", executable());
+        oldStash.put("$OUTPUT", outfile);
 
         log.info("invoking matcher for: " + uri);
 
         try {
-            matches = matcher.match(stash, args);
-            int nMatches = matches.size();
-
-            if (nMatches == 1) {
-                log.info("1 match for: " + uri);
-            } else {
-                log.info(nMatches + " matches for: " + uri);
-            }
+            matcher.match(command);
         } catch (Throwable e) {
             log.error("match error: " + e);
+            PMS.error("match error", e);
         }
 
+        // the whole point of the command abstraction is that the stash Map/args List
+        // can be changed by the matcher; so make sure to refresh
+        Stash stash = command.getStash();
+        List<String> args = command.getArgs();
+        List<String> matches = command.getMatches();
+        int nMatches = matches.size();
+
+        if (nMatches == 1) {
+            log.info("1 match for: " + uri);
+        } else {
+            log.info(nMatches + " matches for: " + uri);
+        }
+
+        args.add(0, stash.get("$EXECUTABLE"));
+
+        /*
+         * if it's still an MEncoder command, add "$URI -o /tmp/javaps3media/psmesencoder1234";
+         * otherwise assume the matching action has defined the URI and any output option(s)
+         */
+        if (args.get(0).equals(executable()) && !(args.contains("-o"))) {
+            args.add(1, stash.get("$URI"));
+            args.add("-o");
+            args.add(outfile);
+        }
+
+        log.info("command: " + args);
+
+        params.input_pipes[0] = pipe;
         params.minBufferSize = params.minFileSize;
         params.secondread_minsize = 100000;
+        params.log = true; // XXX doesn't seem to work (i.e. send the command's stdout/stderr to debug.log)
 
-        PipeProcess pipe = new PipeProcess("pmsencoder" + System.currentTimeMillis());
-        params.input_pipes[0] = pipe;
-
-        String cmdArray[] = new String[ args.size() + 4 ];
-        cmdArray[0] = executable();
-        cmdArray[1] = stash.get("uri");
-
-        for (int i = 0; i < args.size(); ++i) {
-            cmdArray[ i + 2 ] = args.get(i);
-        }
-
-        cmdArray[ cmdArray.length - 2 ] = "-o";
-        cmdArray[ cmdArray.length - 1 ] = pipe.getInputPipe();
+        String cmdArray[] = new String[ args.size() ];
+        args.toArray(cmdArray);
 
         ProcessWrapper mkfifo_process = pipe.getPipeProcess();
-
         ProcessWrapperImpl pw = new ProcessWrapperImpl(cmdArray, params);
         pw.attachProcess(mkfifo_process);
         mkfifo_process.runInNewThread();
 
         try {
-            // Thread.sleep(50);
-            Thread.sleep(200);
+            Thread.sleep(300);
         } catch (InterruptedException e) { }
 
         pipe.deleteLater();
